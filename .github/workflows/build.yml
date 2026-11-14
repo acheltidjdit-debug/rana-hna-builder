@@ -5,52 +5,88 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - uses: actions/setup-java@v4
+
+      - name: Set up Java 17
+        uses: actions/setup-java@v4
         with:
           distribution: 'temurin'
           java-version: '17'
+
       - name: Setup Android SDK
         uses: android-actions/setup-android@v3
-      - name: Build Real APK
+
+      - name: Create Android Project
         run: |
           mkdir -p app/src/main/java/com/ranahna/app
-          mkdir -p app/src/main/res/layout
-          mkdir -p app/build
-          cat > app/src/main/AndroidManifest.xml << 'EOF'
+          mkdir -p build
+
+          cat > app/build.gradle << 'GRADLE'
+          plugins { id 'com.android.application' }
+          android {
+            namespace 'com.ranahna.app'
+            compileSdk 34
+            defaultConfig {
+              applicationId "com.ranahna.app"
+              minSdk 21
+              targetSdk 34
+              versionCode 1
+              versionName "1.0"
+            }
+            buildTypes { release { minifyEnabled false } }
+          }
+          GRADLE
+
+          cat > app/src/main/AndroidManifest.xml << 'MANIFEST'
           <?xml version="1.0" encoding="utf-8"?>
-          <manifest xmlns:android="http://schemas.android.com/apk/res/android" package="com.ranahna.app">
-            <uses-permission android:name="android.permission.INTERNET"/>
+          <manifest xmlns:android="http://schemas.android.com/apk/res/android">
+            <uses-permission android:name="android.permission.INTERNET" />
             <application android:label="Rana Hna" android:theme="@android:style/Theme.NoTitleBar">
               <activity android:name=".MainActivity" android:exported="true">
-                <intent-filter><action android:name="android.intent.action.MAIN"/><category android:name="android.intent.category.LAUNCHER"/></intent-filter>
+                <intent-filter>
+                  <action android:name="android.intent.action.MAIN" />
+                  <category android:name="android.intent.category.LAUNCHER" />
+                </intent-filter>
               </activity>
             </application>
           </manifest>
-          EOF
-          cat > app/src/main/java/com/ranahna/app/MainActivity.java << 'EOF'
+          MANIFEST
+
+          cat > app/src/main/java/com/ranahna/app/MainActivity.java << 'JAVA'
           package com.ranahna.app;
-          import android.app.Activity; import android.os.Bundle; import android.webkit.WebView; import android.webkit.WebViewClient;
+          import android.app.Activity;
+          import android.os.Bundle;
+          import android.webkit.WebView;
+          import android.webkit.WebViewClient;
           public class MainActivity extends Activity {
-            protected void onCreate(Bundle b){ super.onCreate(b);
-              WebView w=new WebView(this); w.getSettings().setJavaScriptEnabled(true);
+            @Override
+            protected void onCreate(Bundle b) {
+              super.onCreate(b);
+              WebView w = new WebView(this);
+              w.getSettings().setJavaScriptEnabled(true);
               w.setWebViewClient(new WebViewClient());
               w.loadUrl("https://acheltidjdit-debug.github.io/rana-hna-builder/");
               setContentView(w);
             }
           }
-          EOF
-          cat > app/build.gradle << 'EOF'
-          apply plugin: 'com.android.application'
-          android { compileSdkVersion 34; defaultConfig { applicationId "com.ranahna.app"; minSdkVersion 21; targetSdkVersion 34; versionCode 1; versionName "1.0" } buildTypes { release { minifyEnabled false } } }
-          dependencies {}
-          EOF
-          cat > app/settings.gradle << 'EOF'
+          JAVA
+
+          cat > settings.gradle << 'SETTINGS'
           include ':app'
-          EOF
-          cd app && gradle assembleDebug --no-daemon || ./gradlew assembleDebug --no-daemon || echo "build failed"
-          mkdir -p ../build
-          find . -name "*.apk" -exec cp {} ../build/Rana-Hna.apk \;
-          ls -lh ../build/
+          SETTINGS
+
+      - name: Build APK
+        run: |
+          cd app
+          chmod +x gradlew || true
+          if [ -f gradlew ]; then ./gradlew assembleDebug; else gradle wrapper && ./gradlew assembleDebug; fi
+          find . -name "*.apk" -type f
+
+      - name: Copy APK
+        run: |
+          mkdir -p build
+          find app -name "*.apk" -exec cp {} build/Rana-Hna.apk \;
+          ls -lh build/
+
       - name: Upload APK
         uses: actions/upload-artifact@v4
         with:

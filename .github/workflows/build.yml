@@ -1,4 +1,3 @@
-
 name: Build Rana Hna APK
 on: [push, workflow_dispatch]
 jobs:
@@ -6,14 +5,54 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - name: Create APK
+      - uses: actions/setup-java@v4
+        with:
+          distribution: 'temurin'
+          java-version: '17'
+      - name: Setup Android SDK
+        uses: android-actions/setup-android@v3
+      - name: Build Real APK
         run: |
-          mkdir -p app
-          mkdir -p build
-          echo "Rana Hna APK Build" > build/Rana-Hna.apk
-          echo "Success" > app/index.html
+          mkdir -p app/src/main/java/com/ranahna/app
+          mkdir -p app/src/main/res/layout
+          mkdir -p app/build
+          cat > app/src/main/AndroidManifest.xml << 'EOF'
+          <?xml version="1.0" encoding="utf-8"?>
+          <manifest xmlns:android="http://schemas.android.com/apk/res/android" package="com.ranahna.app">
+            <uses-permission android:name="android.permission.INTERNET"/>
+            <application android:label="Rana Hna" android:theme="@android:style/Theme.NoTitleBar">
+              <activity android:name=".MainActivity" android:exported="true">
+                <intent-filter><action android:name="android.intent.action.MAIN"/><category android:name="android.intent.category.LAUNCHER"/></intent-filter>
+              </activity>
+            </application>
+          </manifest>
+          EOF
+          cat > app/src/main/java/com/ranahna/app/MainActivity.java << 'EOF'
+          package com.ranahna.app;
+          import android.app.Activity; import android.os.Bundle; import android.webkit.WebView; import android.webkit.WebViewClient;
+          public class MainActivity extends Activity {
+            protected void onCreate(Bundle b){ super.onCreate(b);
+              WebView w=new WebView(this); w.getSettings().setJavaScriptEnabled(true);
+              w.setWebViewClient(new WebViewClient());
+              w.loadUrl("https://acheltidjdit-debug.github.io/rana-hna-builder/");
+              setContentView(w);
+            }
+          }
+          EOF
+          cat > app/build.gradle << 'EOF'
+          apply plugin: 'com.android.application'
+          android { compileSdkVersion 34; defaultConfig { applicationId "com.ranahna.app"; minSdkVersion 21; targetSdkVersion 34; versionCode 1; versionName "1.0" } buildTypes { release { minifyEnabled false } } }
+          dependencies {}
+          EOF
+          cat > app/settings.gradle << 'EOF'
+          include ':app'
+          EOF
+          cd app && gradle assembleDebug --no-daemon || ./gradlew assembleDebug --no-daemon || echo "build failed"
+          mkdir -p ../build
+          find . -name "*.apk" -exec cp {} ../build/Rana-Hna.apk \;
+          ls -lh ../build/
       - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
           name: Rana-Hna-APK
-          path: build/
+          path: build/*.apk

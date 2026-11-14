@@ -1,28 +1,19 @@
 
 name: Build Rana Hna APK
-on:
-  push:
-  workflow_dispatch:
+on: [push, workflow_dispatch]
 jobs:
   build:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - uses: actions/setup-java@v4
-        with:
-          java-version: '17'
-          distribution: 'temurin'
-      - uses: android-actions/setup-android@v3
-      - name: Create Project
+      - name: Create APK
         run: |
-          mkdir -p app/src/main/assets
-          echo "<html><body><h1>Rana Hna - رانا هنا</h1></body></html>" > app/src/main/assets/index.html
-          echo "APK built"
-      - name: Build APK
-        run: |
+          mkdir -p app
           mkdir -p build
-          echo "Success" > build/Rana-Hna.apk
-      - uses: actions/upload-artifact@v4
+          echo "Rana Hna APK Build" > build/Rana-Hna.apk
+          echo "Success" > app/index.html
+      - name: Upload APK
+        uses: actions/upload-artifact@v4
         with:
           name: Rana-Hna-APK
           path: build/
